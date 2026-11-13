@@ -1,14 +1,17 @@
-package com.ric.ric;
+package com.ric.ric.controller;
 
 import javafx.fxml.FXML;
 import javafx.scene.control.Label;
 
-public class HelloController {
+public class LoginController {
+
     @FXML
     private Label welcomeText;
 
     @FXML
     protected void onHelloButtonClick() {
-        welcomeText.setText("Welcome to JavaFX Application!");
+
+        welcomeText.setText("Bienvenido al sistema R.I.C.");
+
     }
 }

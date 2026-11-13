@@ -2,8 +2,11 @@ package com.ric.ric;
 
 import javafx.application.Application;
 
-public class Launcher {
+public class RICLauncher {
+
     public static void main(String[] args) {
-        Application.launch(HelloApplication.class, args);
+
+        Application.launch(RICApplication.class, args);
+
     }
 }
