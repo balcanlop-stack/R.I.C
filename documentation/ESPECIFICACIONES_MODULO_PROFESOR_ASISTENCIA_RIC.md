@@ -1,7 +1,8 @@
 # R.I.C. — Especificaciones del módulo Profesor y Asistencia
 
-**Versión:** 1.0  
-**Estado:** Borrador para revisión  
+**Versión:** 1.1  
+**Estado:** Borrador actualizado para revisión  
+**Fecha:** 25 de noviembre de 2026  
 **Proyecto:** Registro Integral de Calificaciones (R.I.C.)
 
 ---
@@ -63,8 +64,10 @@ Reglas funcionales:
 5. Una materia no puede repetirse dentro del mismo grupo mientras exista una asignación vigente, aunque la impartan profesores distintos.
 6. La misma materia puede asignarse en grupos diferentes.
 7. Cuando termina la asignación de una materia para un profesor, otro profesor puede impartir posteriormente esa misma materia al mismo grupo mediante una nueva asignación. La asignación anterior debe conservarse como historial.
+8. La configuración de evaluación corresponde a la combinación de materia, grupo y periodo; no pertenece exclusivamente al profesor ni a su asignación.
+9. Una materia no puede repetirse dentro del mismo grupo mientras exista una asignación vigente, independientemente del profesor que la imparta.
 
-El módulo Profesor no debe crear, editar ni cancelar asignaciones docentes de grupo que son responsabilidad del Director.
+El módulo Profesor no debe crear, editar ni cancelar asignaciones docentes de grupo que son responsabilidad del Director. La selección y asignación de materias deberá respetar las reglas y validaciones compartidas del sistema.
 
 ## 5. Estados y vigencia de las asignaciones
 
@@ -85,6 +88,7 @@ Reglas:
 - Mientras una asignación esté vigente, el profesor podrá realizar las operaciones ordinarias permitidas por el sistema.
 - Al terminar una asignación, el profesor conservará acceso de consulta a sus calificaciones, actividades, criterios, asistencias, modificaciones y solicitudes relacionadas.
 - Una asignación terminada no deberá permitir nuevas capturas ordinarias. Las correcciones posteriores deberán seguir el procedimiento de autorización correspondiente.
+- El profesor conserva acceso de consulta a las actividades y calificaciones que registró durante su asignación, aunque posteriormente sea sustituido.
 
 ## 6. Consulta de alumnos
 
@@ -99,6 +103,8 @@ Reglas relacionadas con las inscripciones:
 - Las calificaciones y asistencias anteriores no se transfieren automáticamente a la nueva inscripción.
 - Las bajas y reincorporaciones conservan el historial; una reincorporación genera una nueva inscripción.
 - El módulo debe consultar la inscripción correspondiente a la fecha y al contexto académico del registro, evitando atribuir asistencia a una inscripción incorrecta.
+- Las asistencias anteriores permanecen asociadas a la inscripción original. No se transfieren a una inscripción nueva por cambio de grupo, baja temporal o reincorporación.
+- Para registrar o consultar asistencia, se debe verificar que la inscripción del alumno corresponda al grupo y a la fecha de la sesión.
 
 El módulo Profesor no podrá dar de alta alumnos, cambiar alumnos de grupo ni modificar sus datos personales, salvo que una especificación posterior autorice expresamente alguna función.
 
@@ -122,6 +128,9 @@ Reglas funcionales:
 5. Las modificaciones de asistencia deberán conservar un historial.
 6. Los registros no se eliminarán por el hecho de que un alumno cause baja o cambie de grupo.
 7. La consulta histórica deberá permitir identificar qué se registró y cuándo se realizó la captura o modificación.
+8. La asistencia se conservará vinculada a la inscripción del alumno que corresponda a la fecha de la sesión; no se debe asociar automáticamente a inscripciones posteriores.
+9. Si el alumno se incorpora a un grupo después de iniciada la evaluación, no se deben generar asistencias para sesiones anteriores a su fecha de incorporación.
+10. Si el alumno cambia de grupo o se reincorpora, el profesor consultará y registrará asistencia conforme a la nueva inscripción desde su fecha de vigencia.
 
 La asistencia no deberá registrarse para una materia o grupo que no corresponda a una asignación válida del profesor.
 
@@ -194,6 +203,7 @@ Como mínimo, la implementación deberá validar:
 - Que el grupo y la materia estén relacionados con una asignación del profesor.
 - Que la asignación se encuentre en un estado y dentro de una vigencia que permitan la operación solicitada.
 - Que el alumno tenga la inscripción que corresponda al grupo y a la fecha de la sesión.
+- Que la sesión no sea anterior a la fecha de inicio de la inscripción considerada.
 - Que el estado de asistencia pertenezca al catálogo acordado.
 - Que la captura retroactiva respete el plazo aplicable, una vez que este se encuentre definido.
 - Que toda modificación conserve el historial y al usuario responsable.
@@ -246,6 +256,7 @@ Los siguientes puntos requieren definición o aprobación antes de convertirse e
 - La estructura física definitiva de `asistencias`, `detalle_asistencia` e `historial_asistencias`.
 - La relación exacta entre cada registro de asistencia y la inscripción del alumno.
 - El mecanismo técnico que activará automáticamente las asignaciones programadas.
+- Los detalles técnicos de las actividades de recuperación, incluidos los casos en que no exista un criterio equivalente en el grupo destino.
 - La forma de registrar y consultar justificaciones, si se requiere información adicional a marcar el estado JUSTIFICADO.
 - La distribución final de vistas, controladores, servicios y DAO según el código compartido.
 
@@ -254,3 +265,32 @@ Estos puntos no deben resolverse mediante cambios unilaterales en la base de dat
 ---
 
 **Nota de implementación:** Este documento describe el alcance funcional aprobado y distingue las entidades existentes de las propuestas pendientes. Antes de programar consultas SQL o crear tablas, se deberá contrastar cada operación con el diccionario de datos vigente y con la estructura física real de la base de datos.
+
+
+## 16. Sustitución docente y continuidad del trabajo académico
+
+Cuando un profesor sea sustituido en un grupo:
+
+- El Director finaliza la asignación anterior y registra una nueva asignación para el profesor sustituto.
+- El profesor sustituto consulta los grupos y materias que le fueron asignados conforme a la vigencia de su nueva asignación.
+- Las actividades, calificaciones y asistencias ya registradas no cambian de autor ni de asignación. Se conserva su vínculo histórico.
+- El sustituto puede consultar la información académica necesaria para dar continuidad al trabajo del grupo.
+- El sustituto puede crear nuevas actividades y registrar nuevas calificaciones y asistencias durante la vigencia de su propia asignación, respetando los plazos y reglas del sistema.
+- La sustitución no crea una nueva versión de la configuración de evaluación. El sustituto continúa utilizando la configuración vigente para la materia, grupo y periodo.
+- Las actividades nuevas deben quedar identificadas con el profesor y la asignación que las generaron.
+- Las correcciones de registros históricos se tramitan mediante el procedimiento de autorización correspondiente; no se deben alterar directamente para cambiar su autoría.
+
+El módulo Profesor y Asistencia no realiza la sustitución administrativa ni modifica las asignaciones docentes: esas acciones corresponden al módulo Director.
+
+## 17. Cambios de grupo y reincorporaciones: continuidad de asistencia
+
+Cuando un alumno cambia de grupo durante un periodo o se reincorpora después de una baja temporal:
+
+- La inscripción anterior permanece finalizada y se crea una nueva inscripción.
+- Las asistencias registradas anteriormente permanecen asociadas a la inscripción original.
+- No se trasladan asistencias al grupo destino ni se combinan registros de distintas inscripciones.
+- La captura de asistencia para la nueva inscripción comienza a partir de la fecha de incorporación o reincorporación.
+- El profesor debe consultar la inscripción vigente que corresponda a la fecha de la sesión antes de registrar asistencia.
+- No se deben crear registros retroactivos para sesiones anteriores a la fecha en que el alumno quedó inscrito en el grupo.
+
+Estas reglas mantienen la trazabilidad de la asistencia y evitan atribuir al alumno registros de un grupo en el que todavía no estaba inscrito.

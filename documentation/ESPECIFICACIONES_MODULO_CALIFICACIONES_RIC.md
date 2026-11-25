@@ -1,7 +1,8 @@
 # R.I.C. — Especificaciones del módulo de Calificaciones
 
-**Versión:** 1.0  
-**Estado:** Borrador para revisión  
+**Versión:** 1.1  
+**Estado:** Borrador actualizado para revisión  
+**Fecha:** 25 de noviembre de 2026  
 **Proyecto:** Registro Integral de Calificaciones (R.I.C.)
 
 ---
@@ -43,7 +44,9 @@ La configuración deberá identificar, como mínimo, el contexto al que pertenec
 - Profesor responsable de la modificación.
 - Fecha de creación o modificación.
 
-La relación definitiva entre las tablas de evaluación y las asignaciones deberá revisarse contra el esquema físico aprobado. No se debe asumir que las tablas propuestas ya existen.
+La configuración pertenece a la combinación de materia, grupo y periodo; no pertenece exclusivamente a un profesor ni a una asignación docente. Las actividades y calificaciones sí deberán conservar el contexto de la asignación docente y del profesor que las creó o registró, según corresponda.
+
+La relación física definitiva entre las tablas de evaluación, las materias asignadas, las inscripciones y las asignaciones docentes deberá revisarse y aprobarse con el responsable de arquitectura y base de datos. No se debe asumir que las tablas propuestas ya existen.
 
 ## 4. Criterios de evaluación y ponderaciones
 
@@ -69,7 +72,8 @@ Reglas:
 - Las actividades pertenecen a una versión de configuración determinada.
 - Las actividades creadas antes de un cambio conservarán la relación con la versión en la que fueron registradas.
 - Las actividades nuevas utilizarán la nueva versión de configuración.
-- Cada calificación deberá corresponder a un alumno, una actividad y el contexto de inscripción pertinente.
+- Cada calificación deberá corresponder a una actividad y a la inscripción del alumno en el grupo correspondiente.
+- El sistema validará que el alumno y la materia de la actividad correspondan al mismo grupo mediante las relaciones académicas aplicables.
 - El sistema validará que el puntaje capturado no exceda el valor máximo definido para la actividad.
 - Una calificación pendiente se representará como `NULL`; no deberá convertirse automáticamente en cero.
 - La captura ordinaria estará limitada por la vigencia de la asignación docente y por las fechas límite y reglas de cierre del periodo.
@@ -151,18 +155,21 @@ La tabla `periodos` y su estructura propuesta no forman parte de las 11 tablas c
 
 ## 11. Relación con alumnos e inscripciones
 
-Las calificaciones deberán asociarse con la inscripción pertinente del alumno en el grupo y contexto académico correspondiente.
+Se aprobó como regla de diseño funcional que todos los alumnos inscritos en un grupo cursan todas las materias asignadas a ese grupo. No se administrarán inscripciones individuales por materia.
 
-Se debe revisar y aprobar la relación exacta antes de diseñar las tablas. Como criterio de diseño pendiente, se ha señalado que podría ser necesario relacionar las calificaciones con una entidad de inscripción en materia, en lugar de utilizar únicamente `id_alumno_grupo`.
+Las futuras calificaciones deberán referenciar la inscripción del alumno y la actividad evaluada. A través de las relaciones correspondientes se deberá poder identificar el grupo, la materia, el profesor, el periodo, la configuración y la asignación docente pertinentes. No se debe relacionar una calificación únicamente mediante `id_alumno`.
 
-Reglas conocidas de inscripción:
+La validación deberá asegurar que el alumno y la materia correspondan al mismo grupo. Esta decisión reemplaza la propuesta anterior de considerar como pendiente una entidad de inscripción individual en materia: por ahora no se creará esa entidad.
+
+Reglas de inscripción:
 
 - Un cambio de grupo finaliza la inscripción anterior y genera una nueva.
-- Las calificaciones anteriores no se transfieren automáticamente a una nueva inscripción.
+- Las calificaciones anteriores permanecen vinculadas a la inscripción original y no se transfieren a la nueva inscripción.
 - Las bajas y reincorporaciones conservan el historial.
+- Los resultados de inscripciones o grupos diferentes no se combinan.
 - El módulo debe poder consultar las calificaciones históricas asociadas a la inscripción correcta.
 
-No se debe asumir que existe una tabla de inscripción en materia: no forma parte de las 11 tablas confirmadas.
+No se debe asumir que existe una tabla adicional para estas relaciones: la regla funcional está aprobada, pero el diseño físico de evaluación y sus relaciones sigue pendiente de aprobación. Las 11 tablas confirmadas no incluyen todavía las tablas de calificaciones, actividades ni configuraciones.
 
 ## 12. Asignaciones docentes y permisos
 
@@ -173,6 +180,11 @@ El profesor podrá administrar la evaluación únicamente dentro de las materias
 - Una asignación terminada no permite nuevas capturas ordinarias.
 - Las correcciones posteriores se procesan mediante el flujo de autorización correspondiente.
 - El módulo no administra ni modifica las asignaciones docentes.
+- Las actividades y calificaciones creadas deben conservar la identificación del profesor y de la asignación docente que correspondan.
+- La configuración de evaluación es compartida por la materia, grupo y periodo. Un cambio de profesor no crea una nueva versión de configuración.
+- Cuando se sustituye a un profesor, el sustituto continúa utilizando la configuración vigente. Puede consultar la información académica necesaria y crear nuevas actividades y calificaciones durante la vigencia de su propia asignación.
+- Las actividades y calificaciones anteriores permanecen vinculadas al profesor y a la asignación originales; no se cambia su autoría.
+- Solo un cambio real en criterios o ponderaciones genera una nueva versión de configuración, conforme a la opción C.
 
 Las validaciones deberán realizarse en la capa de servicio y no depender únicamente de que la interfaz oculte botones.
 
@@ -202,6 +214,9 @@ La implementación deberá contemplar, como mínimo:
 - Que cada actividad pertenezca a un criterio y versión válidos.
 - Que el puntaje no exceda el máximo de la actividad.
 - Que la calificación corresponda a la inscripción académica correcta.
+- Que el alumno y la materia correspondan al mismo grupo.
+- Que la inscripción utilizada corresponda al contexto de la actividad y a la fecha pertinente.
+- Que las actividades y calificaciones conserven el profesor y la asignación docente con los que fueron creadas o registradas.
 - Que `NULL` se trate como pendiente y no como cero.
 - Que las versiones históricas no sean sobrescritas.
 - Que la captura ordinaria respete fechas límite y cierres.
@@ -266,3 +281,71 @@ Estos puntos deberán revisarse antes de convertirlos en código. Las propuestas
 ---
 
 **Nota de implementación:** Este documento describe el alcance funcional y las decisiones de versionado ya acordadas. Las tablas del módulo de Calificaciones y Periodos siguen siendo propuestas pendientes de aprobación e implementación. Antes de escribir consultas SQL, se deberá contrastar el diseño con el diccionario de datos vigente y con la estructura física real de MySQL.
+
+
+## 18. Sustitución de profesor y continuidad de la evaluación
+
+La sustitución de un profesor no debe interrumpir ni reiniciar la configuración de evaluación de una materia, grupo y periodo.
+
+Reglas aprobadas:
+
+1. El Director finaliza la asignación del profesor anterior y crea una nueva asignación para el profesor sustituto.
+2. Las actividades y calificaciones anteriores permanecen vinculadas al profesor y a la asignación con los que fueron creadas o registradas.
+3. No se cambia la autoría de actividades ni de calificaciones históricas.
+4. El profesor sustituto puede consultar la información académica necesaria para continuar el trabajo del grupo.
+5. El profesor sustituto puede crear nuevas actividades y registrar nuevas calificaciones durante la vigencia de su propia asignación.
+6. La configuración de evaluación pertenece a materia + grupo + periodo, no al profesor ni a la asignación docente.
+7. El profesor sustituto continúa con la configuración vigente; la sustitución por sí sola no genera una nueva versión.
+8. Si el profesor modifica realmente los criterios o las ponderaciones, se genera una nueva versión conforme a las reglas de versionado de este documento.
+
+La interfaz y los servicios deberán distinguir entre la autoría histórica de cada actividad/calificación y la configuración compartida que rige la evaluación del grupo.
+
+## 19. Cambios de grupo y reincorporaciones de alumnos
+
+Cuando un alumno cambia de grupo durante un periodo:
+
+- Se finaliza su inscripción anterior y se crea una nueva inscripción para el grupo destino.
+- Las calificaciones anteriores permanecen asociadas a la inscripción original.
+- No se transfieren calificaciones al nuevo grupo.
+- El alumno utiliza la configuración de evaluación vigente del grupo destino desde la fecha de incorporación.
+- El cálculo de la nueva inscripción considera únicamente las actividades que correspondan a esa inscripción.
+- Los resultados de la inscripción anterior y de la nueva no se combinan.
+- Las actividades realizadas antes de la incorporación no se consideran automáticamente para la nueva inscripción.
+
+Cuando un alumno se reincorpora después de una baja temporal:
+
+- Se crea una nueva inscripción; la inscripción anterior permanece finalizada.
+- Las calificaciones y asistencias anteriores se conservan asociadas a la inscripción original y no se transfieren.
+- El alumno continúa su evaluación desde la fecha de reincorporación.
+- Si vuelve al mismo grupo y al mismo periodo, puede utilizar la configuración vigente del grupo siempre que no haya sido sustituida por una nueva versión.
+- La reincorporación no genera por sí misma una nueva versión de configuración.
+- Los resultados de inscripciones distintas no se combinan.
+
+### 19.1 Actividades de recuperación
+
+Para un alumno que se incorpora o reincorpora y no pudo realizar actividades anteriores, el profesor podrá asignar una actividad de recuperación cuando corresponda.
+
+Reglas funcionales aprobadas:
+
+- La recuperación sustituye la evidencia de una actividad anterior que el alumno no pudo realizar; no se agrega como una actividad extra al promedio.
+- La recuperación pertenece al criterio de evaluación correspondiente.
+- No modifica la ponderación del criterio.
+- Debe conservarse el vínculo histórico entre la actividad original y la actividad de recuperación.
+- Si el alumno cambia de grupo, la recuperación debe corresponder a un criterio del grupo destino y a su configuración vigente.
+- Si no existe una correspondencia clara con un criterio del grupo destino, el profesor debe resolverla antes de asignar la recuperación.
+- Las actividades anteriores no se asignan automáticamente a la nueva inscripción.
+
+Los detalles técnicos de la relación entre actividad original, actividad de recuperación, inscripción y calificación deben definirse en el diseño físico antes de implementar esta funcionalidad. No se deben crear tablas o campos por iniciativa individual.
+
+## 20. Responsabilidades compartidas para correcciones autorizadas
+
+El flujo de correcciones se distribuye entre módulos:
+
+- **Solicitudes y Reportes:** administra el flujo de solicitudes, autorizaciones, extensiones, vencimientos, estados e historial.
+- **Director:** revisa y decide la aprobación o el rechazo de cada calificación solicitada y resuelve solicitudes de extensión.
+- **Profesor:** crea la solicitud y, cuando se autoriza, captura el nuevo valor dentro del plazo concedido.
+- **Calificaciones:** valida la autorización recibida, ejecuta la modificación permitida y conserva el historial de la calificación.
+
+Una solicitud puede contener varias calificaciones y cada detalle se revisa individualmente. El profesor explica el error, pero no propone el nuevo valor. Una corrección autorizada no reabre el periodo ni habilita capturas ordinarias adicionales.
+
+El módulo de Calificaciones no debe duplicar el flujo de solicitudes ni permitir modificaciones fuera de una autorización válida cuando la captura ordinaria ya esté bloqueada.

@@ -1,7 +1,8 @@
 # R.I.C. — Especificaciones del módulo de Solicitudes y Reportes
 
-**Versión:** 1.0  
-**Estado:** Borrador para revisión  
+**Versión:** 1.1  
+**Estado:** Borrador actualizado para revisión  
+**Fecha:** 25 de noviembre de 2026  
 **Proyecto:** Registro Integral de Calificaciones (R.I.C.)
 
 ---
@@ -18,6 +19,7 @@ También permitirá que el Director y el profesor consulten las solicitudes que 
 
 El módulo contempla:
 
+- Administrar el flujo de solicitudes, autorizaciones, extensiones, vencimientos, estados e historial.
 - Crear solicitudes de corrección de calificaciones.
 - Incluir varias calificaciones dentro de una misma solicitud.
 - Revisar y resolver individualmente cada detalle de una solicitud.
@@ -31,6 +33,15 @@ El módulo contempla:
 - Gestionar notificaciones internas relacionadas con solicitudes y autorizaciones.
 
 La configuración de periodos, la asignación de profesores y la captura ordinaria de calificaciones pertenecen a otros módulos.
+
+La distribución de responsabilidades entre módulos queda establecida así:
+
+- **Solicitudes y Reportes:** administra el flujo, estados, plazos, extensiones, vencimientos, historial y notificaciones de solicitudes.
+- **Director:** revisa y decide la aprobación o el rechazo de cada detalle y resuelve las solicitudes de extensión desde las pantallas del módulo Director.
+- **Profesor:** crea solicitudes, consulta su estado y captura el nuevo valor cuando una corrección ha sido autorizada y sigue vigente.
+- **Calificaciones:** valida la autorización, ejecuta la modificación de la calificación y conserva su historial.
+
+El módulo Solicitudes y Reportes no debe implementar pantallas o acciones que sustituyan las responsabilidades de decisión del módulo Director, ni modificar directamente el valor de una calificación.
 
 ## 3. Participantes y responsabilidades
 
@@ -46,9 +57,13 @@ El profesor podrá:
 - Solicitar una extensión antes de que venza el plazo autorizado.
 - Consultar las solicitudes y autorizaciones relacionadas con sus asignaciones, incluso si la asignación docente terminó.
 
+La sustitución de un profesor o el fin de una asignación no elimina ni cancela automáticamente las solicitudes pendientes. El profesor conserva acceso de consulta a las solicitudes relacionadas con sus asignaciones anteriores. Una corrección autorizada podrá completarse aunque la asignación haya terminado, siempre que la autorización siga vigente y se limite al detalle aprobado.
+
 El profesor no propondrá el nuevo valor dentro de la solicitud inicial. La solicitud identifica la calificación y explica el error; si se autoriza, el profesor captura el nuevo valor dentro del plazo concedido.
 
 ### 3.2 Director
+
+El módulo Director proporciona las pantallas y acciones para que el Director revise y decida las solicitudes. El módulo Solicitudes y Reportes administra el flujo y conserva el seguimiento de esas decisiones.
 
 El Director podrá:
 
@@ -76,6 +91,8 @@ Reglas:
 6. La solicitud debe conservar sus detalles y decisiones como historial.
 
 La solicitud deberá referenciar las calificaciones existentes, no crear copias independientes de ellas.
+
+La referencia debe conservar el contexto académico de la calificación: inscripción del alumno, actividad evaluada y relaciones que permitan identificar grupo, materia, periodo y asignación docente pertinentes. No se debe identificar una calificación únicamente mediante `id_alumno`. La estructura física exacta de estas relaciones deberá aprobarse con el responsable de arquitectura y base de datos.
 
 ## 5. Revisión y resolución individual
 
@@ -150,6 +167,8 @@ La extensión no debe borrar ni sobrescribir el plazo original: ambos deben pode
 ## 10. Asignaciones docentes terminadas
 
 Las solicitudes y autorizaciones deben conservarse aunque la asignación del profesor haya terminado.
+
+Esta regla también aplica cuando un profesor es sustituido: la asignación anterior se finaliza y se crea una nueva asignación para el sustituto. Las solicitudes pendientes siguen asociadas al profesor y a la asignación originales; no se trasladan al sustituto ni cambian su autoría. El Director puede resolverlas y autorizar correcciones específicas sin reactivar la asignación anterior.
 
 Reglas:
 
@@ -308,7 +327,7 @@ Los siguientes puntos requieren definición antes de implementar:
 - Catálogo definitivo de reportes, filtros, permisos y formatos de exportación.
 - Estructura física de notificaciones internas.
 - Estructura definitiva de las tablas de solicitudes, detalles y extensiones.
-- Relación exacta entre solicitudes, calificaciones, versiones de evaluación e inscripciones.
+- Relación exacta entre solicitudes, calificaciones, actividades, versiones de evaluación, inscripciones y asignaciones docentes.
 - Regla técnica y frecuencia para detectar autorizaciones vencidas.
 - Si el plazo se establece por detalle o se comparte entre los detalles aprobados de una solicitud, cuando existan varias autorizaciones.
 - Información obligatoria que deberá incluir la justificación de rechazo o aprobación, más allá de los datos mínimos de auditoría.
@@ -319,3 +338,45 @@ Estos puntos no deberán resolverse mediante cambios unilaterales en la base de 
 ---
 
 **Nota de implementación:** Este documento describe el flujo funcional acordado para solicitudes de corrección, autorizaciones, extensiones y notificaciones internas. Las tablas propuestas siguen pendientes de aprobación e implementación. Antes de desarrollar consultas SQL, se deberá contrastar el diseño con el diccionario de datos vigente y con la estructura física real de MySQL.
+
+
+## 19. Reglas de continuidad académica relacionadas con solicitudes
+
+Las solicitudes de corrección deben respetar el contexto histórico de los registros académicos y no alterar las reglas de inscripción, evaluación o asignación docente.
+
+### 19.1 Cambio de grupo y reincorporación del alumno
+
+- Las calificaciones anteriores permanecen asociadas a la inscripción original del alumno.
+- Un cambio de grupo o una reincorporación genera una nueva inscripción; las calificaciones de inscripciones diferentes no se combinan.
+- Una solicitud de corrección debe referenciar la calificación histórica concreta y su inscripción original.
+- La autorización de una corrección no transfiere la calificación a otra inscripción ni modifica el grupo al que pertenecía.
+- El Director puede revisar y resolver una solicitud pendiente aunque el alumno ya no esté inscrito en el grupo original, siempre que la solicitud corresponda a un registro válido y conserve su contexto histórico.
+
+### 19.2 Sustitución de profesor
+
+- Las actividades y calificaciones conservan la autoría y asignación docente originales.
+- Una solicitud creada por el profesor responsable de la calificación permanece vinculada a ese profesor y a su asignación original.
+- La sustitución no cancela solicitudes ni cambia al solicitante.
+- El Director puede resolver una solicitud pendiente después de que la asignación haya terminado.
+- El profesor podrá completar una corrección autorizada y vigente aun cuando la asignación haya terminado; esto no reactiva la asignación ni habilita nuevas capturas ordinarias.
+- El módulo de Calificaciones es responsable de ejecutar el cambio autorizado y conservar el valor anterior, el nuevo valor, el responsable y la fecha y hora.
+
+### 19.3 Configuración de evaluación
+
+La configuración pertenece a la combinación de materia, grupo y periodo. No pertenece exclusivamente al profesor o a la asignación docente. Una sustitución de profesor no crea una nueva versión de configuración.
+
+Las solicitudes de corrección deben apuntar a la calificación que efectivamente se registró bajo su contexto original. El proceso de autorización no debe recalcular ni trasladar resultados entre versiones de configuración, inscripciones o grupos.
+
+## 20. Límites de implementación y coordinación
+
+El responsable del módulo Solicitudes y Reportes no debe:
+
+- Modificar directamente calificaciones; debe solicitar la ejecución de la corrección autorizada al módulo de Calificaciones mediante el contrato de integración acordado.
+- Implementar la decisión del Director como una lógica paralela o duplicada dentro de este módulo.
+- Crear o modificar tablas, campos, índices, claves o relaciones sin aprobación del responsable de arquitectura y base de datos.
+- Asumir que las tablas propuestas en este documento ya existen físicamente.
+- Cambiar la autoría o asignación histórica de actividades, calificaciones o solicitudes.
+- Reabrir periodos completos para permitir correcciones individuales.
+- Permitir que una autorización vencida se reactive mediante una extensión posterior.
+
+Cualquier campo, relación o entidad adicional que se considere necesaria deberá documentarse y presentarse al responsable de arquitectura y base de datos antes de implementarse.
